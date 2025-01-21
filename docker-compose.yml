@@ -2,39 +2,28 @@ version: '3'
 
 volumes:
   pg_data:
-  static_frontend:  # Отдельный том для статики фронтенда
-  static_backend:   # Отдельный том для статики бэкенда
+  static:
 
 services:
   db:
-    image: postgres:13
+    image: postgres:13.10
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
-
   backend:
     build: ./backend/
     env_file: .env
+    depends_on:
+      - db
     volumes:
-      - static_backend:/backend_static  # Используем отдельный том для бэкенда
-    command: >
-      sh -c "python manage.py collectstatic --no-input &&
-             gunicorn --bind 0.0.0.0:8000 backend.wsgi"
-
+      - static_volume:/backend_static
   frontend:
-    build: ./frontend/
     env_file: .env
-    volumes:
-      - static_frontend:/frontend_static  # Используем отдельный том для фронтенда
-    command: >
-      sh -c "npm run build &&
-             cp -r /app/build/. /frontend_static/"
-
+    build: ./frontend/
   gateway:
     build: ./gateway/
     env_file: .env
-    volumes:
-      - static_frontend:/staticfiles  # Монтируем статику фронтенда
-      - static_backend:/backend_static  # Монтируем статику бэкенда
     ports:
       - 8000:80
+    volumes:
+      - static:/static
